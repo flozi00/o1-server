@@ -1,6 +1,6 @@
 import json
-import time
 import os
+import time
 from typing import List, Optional
 
 from fastapi import FastAPI
@@ -298,7 +298,7 @@ async def chat_completions(request: ChatCompletionRequest):
             _resp_async_generator(message_json), media_type="application/x-ndjson"
         )
 
-    answers = think_about(messages)
+    answers = think_about(message_json)
     answer = "\n".join([answer for answer in answers])
     return {
         "id": "1337",
