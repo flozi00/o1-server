@@ -174,6 +174,10 @@ Examples:
 The <step> tags are the steps of the user. The <feedback> tags are the feedback of the rewarder which is your job! The <answer> tags are the answer of the user. Your are not allowed to use the <answer> tags or even the <step> tags. Only the <feedback> tags are allowed.
 Dont reply with any other tags than the <feedback> tags and its content.
 """
+from dotenv import load_dotenv
+
+load_dotenv()
+
 
 from openai import OpenAI
 
