@@ -182,6 +182,8 @@ client = OpenAI(
     api_key=os.getenv("OAI_KEY"),
 )
 
+MODEL_TO_USE = os.getenv("LLM_NAME")
+
 
 def think_about(messages_given):
     step_list = []
@@ -213,7 +215,7 @@ def think_about(messages_given):
             messages_reward.append({"role": "assistant", "content": reward})
 
         completion = client.chat.completions.create(
-            model="meta-llama/Llama-3.3-70B-Instruct-Turbo",
+            model=MODEL_TO_USE,
             messages=messages,
             temperature=0.1,
         )
@@ -221,7 +223,7 @@ def think_about(messages_given):
         step_list.append(step)
 
         completion = client.chat.completions.create(
-            model="meta-llama/Llama-3.3-70B-Instruct-Turbo",
+            model=MODEL_TO_USE,
             messages=messages_reward,
             temperature=0.1,
         )
@@ -236,7 +238,7 @@ def think_about(messages_given):
                 }
             )
             completion = client.chat.completions.create(
-                model="meta-llama/Llama-3.3-70B-Instruct-Turbo",
+                model=MODEL_TO_USE,
                 messages=messages_reward,
                 temperature=0.1,
             )
