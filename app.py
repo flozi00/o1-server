@@ -296,12 +296,14 @@ async def chat_completions(request: ChatCompletionRequest):
             _resp_async_generator(message_json), media_type="application/x-ndjson"
         )
 
+    answers = think_about(messages)
+    answer = "\n".join([answer for answer in answers])
     return {
         "id": "1337",
         "object": "chat.completion",
         "created": time.time(),
         "model": request.model,
-        "choices": [{"message": Message(role="assistant", content="I am thinking...")}],
+        "choices": [{"message": Message(role="assistant", content=answer)}],
     }
 
 
