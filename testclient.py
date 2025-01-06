@@ -1,6 +1,6 @@
 from openai import OpenAI
 
-client = OpenAI(base_url="http://localhost:8000", api_key="d7f30f58a96ce692a80431e087ae635ca4049e949cb06b3da3ab596973ab221f")
+client = OpenAI(base_url="http://localhost:8000", api_key="x")
 
 resp = client.chat.completions.create(
     model="mock-gpt-model",
