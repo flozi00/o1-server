@@ -342,7 +342,9 @@ async def chat_completions(request: ChatCompletionRequest):
         )
 
     answers = think_about(message_json)
-    answer = "\n".join([answer for answer in answers])
+    answer = ""
+    async for a in answers:
+        answer += a + " "
     return {
         "id": "1337",
         "object": "chat.completion",
