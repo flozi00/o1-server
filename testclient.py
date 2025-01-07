@@ -6,7 +6,7 @@ resp = client.chat.completions.create(
     model="mock-gpt-model",
     messages=[
         {"role": "system", "content": "Hello, how can I help you today?"},
-        {"role": "user", "content": "Fred überholt bei einem Wettrennen den 3. Platz. Wieviele Personen sind noch vor ihm?"},
+        {"role": "user", "content": "If 1+2 = 3, what is 2+2?"},
     ],
     temperature=0.1,
     stream=True,

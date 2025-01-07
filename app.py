@@ -3,6 +3,7 @@ import os
 import time
 from typing import List, Optional
 
+import aiofiles
 from fastapi import FastAPI
 from pydantic import BaseModel
 from starlette.responses import StreamingResponse
@@ -134,6 +135,18 @@ FEEDBACK SYSTEM:
 You are only allowed to generated one step at a time. Wait for the feedback before generating the next step.
 Each step should be a short as possible. Make many small steps instead of a few large steps. One step should only contain a single idea.
 If the task has a time based factor draw the states step by step. This needs to be done for example when solving leaderboards.
+
+Examples:
+<step> To find all multiples of 3 that are less than 10, we need to multiply 3 until its larger than 10.</step>
+<step> Then we start with 3.</step>
+<step> Then we add 3 to 3.</step>
+<step> 3 + 3 = 6</step>
+<step> Then we add 3 to 6.</step>
+<step> 6 + 3 = 9</step>
+<step> Then we add 3 to 9.</step>
+<step> 9 + 3 = 12</step>
+<step> Since 12 is larger than 10, we are done.</step>
+<answer>3, 6, 9</answer>
 """
 
 REWARDER = """You are an logical classifier.
@@ -179,54 +192,67 @@ from dotenv import load_dotenv
 load_dotenv()
 
 
-from openai import OpenAI
+import hashlib
+import os
 
-client = OpenAI(
+from openai import AsyncOpenAI
+
+client = AsyncOpenAI(
     base_url=os.getenv("OAI_BASE_URL"),
     api_key=os.getenv("OAI_KEY"),
 )
 
 MODEL_TO_USE = os.getenv("LLM_NAME")
 
+try:
+    os.mkdir("logging")
+except FileExistsError:
+    pass
 
-def think_about(messages_given):
+
+async def think_about(messages_given):
+    msg_hash = hashlib.md5(json.dumps(messages_given).encode()).hexdigest()
     step_list = []
     reward_list = []
 
-    while True:
+    x = 0
+    while x < 5:
         messages = [
             {"role": "system", "content": SYS_MSG},
         ]
-        for msg in messages_given:
-            messages.append(msg)
+        messages.extend(messages_given)
 
         for i in range(len(step_list)):
-            step = step_list[i]
-            reward = reward_list[i]
-            messages.append({"role": "assistant", "content": step})
-            messages.append({"role": "user", "content": reward})
+            messages.extend(
+                [
+                    {"role": "assistant", "content": step_list[i]},
+                    {"role": "user", "content": reward_list[i]},
+                ]
+            )
 
         messages_reward = [
             {"role": "system", "content": REWARDER},
         ]
-        for msg in messages_given:
-            messages_reward.append(msg)
+        messages_reward.extend(messages_given)
 
         for i in range(len(step_list)):
-            step = step_list[i]
-            reward = reward_list[i]
-            messages_reward.append({"role": "user", "content": step})
-            messages_reward.append({"role": "assistant", "content": reward})
+            messages_reward.extend(
+                [
+                    {"role": "user", "content": step_list[i]},
+                    {"role": "assistant", "content": reward_list[i]},
+                ]
+            )
 
-        completion = client.chat.completions.create(
+        completion = await client.chat.completions.create(
             model=MODEL_TO_USE,
             messages=messages,
             temperature=0.1,
+            max_tokens=512,
         )
         step = completion.choices[0].message.content
         step_list.append(step)
 
-        completion = client.chat.completions.create(
+        completion = await client.chat.completions.create(
             model=MODEL_TO_USE,
             messages=messages_reward,
             temperature=0.1,
@@ -241,7 +267,7 @@ def think_about(messages_given):
                     "content": "Please provide feedback using <feedback> </feedback> tags.",
                 }
             )
-            completion = client.chat.completions.create(
+            completion = await client.chat.completions.create(
                 model=MODEL_TO_USE,
                 messages=messages_reward,
                 temperature=0.1,
@@ -249,10 +275,22 @@ def think_about(messages_given):
             reward = completion.choices[0].message.content
             reward_list[-1] = reward
 
+        x += 1
+        print(step)
         if "Correct" in reward:
             yield step
 
         if "<answer>" in step:
+            async with aiofiles.open(f"logging/{msg_hash}.json", "w+") as f:
+                await f.write(
+                    json.dumps(
+                        {
+                            "steps": step_list,
+                            "rewards": reward_list,
+                            "prompt": messages_given,
+                        }
+                    )
+                )
             break
 
 
@@ -274,10 +312,8 @@ class ChatCompletionRequest(BaseModel):
 
 
 async def _resp_async_generator(messages: list):
-    # let's pretend every word is a token and return it over time
-    answer = think_about(messages)
-
-    for i, token in enumerate(answer):
+    i = 0
+    async for token in think_about(messages):
         chunk = {
             "id": i,
             "object": "chat.completion.chunk",
@@ -285,6 +321,7 @@ async def _resp_async_generator(messages: list):
             "model": "mock-gpt-model",
             "choices": [{"delta": {"content": token + " "}}],
         }
+        i += 1
         yield f"data: {json.dumps(chunk)}\n\n"
     yield "data: [DONE]\n\n"
 
