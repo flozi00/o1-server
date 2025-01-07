@@ -214,9 +214,10 @@ async def think_about(messages_given):
     msg_hash = hashlib.md5(json.dumps(messages_given).encode()).hexdigest()
     step_list = []
     reward_list = []
+    full_answer = ""
 
     x = 0
-    while x < 5:
+    while x < 50:
         messages = [
             {"role": "system", "content": SYS_MSG},
         ]
@@ -276,11 +277,12 @@ async def think_about(messages_given):
             reward_list[-1] = reward
 
         x += 1
-        print(step)
         if "Correct" in reward:
+            full_answer += step + "\n"
             yield step
 
         if "<answer>" in step:
+            messages_given.append({"role": "assistant", "content": full_answer})
             async with aiofiles.open(f"logging/{msg_hash}.json", "w+") as f:
                 await f.write(
                     json.dumps(
